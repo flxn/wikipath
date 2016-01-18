@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
-import networkx as nx
 import sys
 import collections
 from collections import defaultdict
 import time
 
-USE_NX = False
 ROWS_MAX = 0
 
 if len(sys.argv) < 3:
@@ -79,14 +77,11 @@ def find_path(graph, start, goal):
     path.reverse()
     return path
 
-if USE_NX:
-    G = nx.DiGraph()
-else:
-    G = SimpleDiGraph()
+G = SimpleDiGraph()
 
 def findNodeByName(searchname):
     for nodenumber, name in nodenames.iteritems():
-        if name.decode('utf-8') == searchname:
+        if name.decode('utf-8').lower() == searchname.lower():
             return nodenumber
     return -1
 
@@ -133,13 +128,19 @@ while True:
     try:
         startnode = findNodeByName(node_from)
         endnode = findNodeByName(node_to)
+
+        if startnode == -1:
+            print node_from + " not found"
+        if endnode == -1:
+            print node_to + " not found"
+
+        if endnode == -1 or startnode == -1:
+            continue
+
         print "Node1: %i" % startnode
         print "Node2: %i\n" % endnode
 
-        if USE_NX:
-            shortest_path = nx.shortest_path(G, startnode, endnode)
-        else:
-            shortest_path = find_path(G, startnode, endnode)
+        shortest_path = find_path(G, startnode, endnode)
 
         print " -> ".join([nodenames[elem] for elem in shortest_path])
     except Exception as e:

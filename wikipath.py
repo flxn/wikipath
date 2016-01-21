@@ -8,14 +8,7 @@ import time
 
 ROWS_MAX = 0
 
-if len(sys.argv) < 3:
-    print 'missing arguments'
-    sys.exit(1)
-
-graphfile = sys.argv[1]
-nodenamefile = sys.argv[2]
-nodenames = dict()
-
+""" Queue Class to queue nodes when searching the graph """
 class Queue:
     def __init__(self):
         self.elements = collections.deque()
@@ -29,6 +22,7 @@ class Queue:
     def get(self):
         return self.elements.popleft()
 
+""" Simple Directed Graph """
 class SimpleDiGraph:
     def __init__(self):
         self.edges = defaultdict(list)
@@ -45,7 +39,89 @@ class SimpleDiGraph:
     def number_of_nodes(self):
         return len(self.edges)
 
+nodenames = dict()
+G = SimpleDiGraph()
+
+def main():
+    """ Main entry point """
+    if len(sys.argv) < 3:
+        print 'missing arguments'
+        print 'Usage: wikipath.py [graphfile] [nodefile]'
+        sys.exit(1)
+
+    graphfile = sys.argv[1]
+    nodenamefile = sys.argv[2]
+
+    loadNames(nodenamefile)
+    loadNodes(graphfile)
+
+    print "Total number of nodes: %i" % G.number_of_nodes()
+
+    while True:
+        print "\n--- Shortest Path ---"
+        node_from = raw_input("From: ").decode(sys.stdin.encoding)
+        startnode = findNodeByName(node_from)
+        if startnode == -1:
+            print node_from + " not found"
+            continue
+
+        node_to = raw_input("To: ").decode(sys.stdin.encoding)
+        endnode = findNodeByName(node_to)
+        if endnode == -1:
+            print node_to + " not found"
+            continue
+
+        try:
+            #print "[1]:", startnode, "[2]:", endnode, "\n"
+            start = time.time()
+            shortest_path = find_path(G, startnode, endnode)
+            end = time.time()
+            #print end - start
+            print ""
+            print " -> ".join([nodenames[elem] for elem in shortest_path])
+        except Exception as e:
+            print "Error"
+            print e
+            pass
+
+def loadNames(nodenamefile):
+    start = time.time()
+    linecount = 0
+    with open(nodenamefile) as f:
+        for line in f:
+            linecount += 1
+            if linecount % 1000 == 0:
+                sys.stdout.write("\rLoading Names: %i loaded" % linecount)
+                sys.stdout.flush()
+            (nodenumber, name) = [col.strip() for col in line.split('|')]
+            nodenames[int(nodenumber)] = name
+
+    end = time.time()
+    print " - elapsed time: %is" % (end - start)
+
+def loadNodes(graphfile):
+    start = time.time()
+    linecount = 0
+    with open(graphfile) as f:
+        for line in f:
+            linecount += 1
+            if linecount % 1000 == 0:
+                sys.stdout.write("\rLoading Connections: %i loaded" % linecount)
+                sys.stdout.flush()
+
+            (title,links) = [col.strip() for col in line.split(';')]
+            links = links.split('|')
+            for link in links:
+                G.add_edge(int(title), int(link))
+
+            if ROWS_MAX > 0 and linecount == ROWS_MAX:
+                break
+
+    end = time.time()
+    print " - elapsed time: %is" % (end - start)
+
 def search(graph, start, goal):
+    """ Search shortest path between nodes """
     queue = Queue()
     queue.put(start)
     visited = {}
@@ -68,6 +144,7 @@ def search(graph, start, goal):
     return path
 
 def find_path(graph, start, goal):
+    """ Wrapper for the search function """
     raw_path = search(graph, start, goal)
     current = goal
     path = [current]
@@ -77,73 +154,12 @@ def find_path(graph, start, goal):
     path.reverse()
     return path
 
-G = SimpleDiGraph()
-
 def findNodeByName(searchname):
+    """ Get numeric node id by article name """
     for nodenumber, name in nodenames.iteritems():
         if name.decode('utf-8').lower() == searchname.lower():
             return nodenumber
     return -1
 
-start = time.time()
-linecount = 0
-with open(nodenamefile) as f:
-    for line in f:
-        linecount += 1
-        if linecount % 1000 == 0:
-            sys.stdout.write("\rLoading Names: %i loaded" % linecount)
-            sys.stdout.flush()
-        (nodenumber, name) = [col.strip() for col in line.split('|')]
-        nodenames[int(nodenumber)] = name
-
-end = time.time()
-print " - elapsed time: %is" % (end - start)
-
-start = time.time()
-linecount = 0
-with open(graphfile) as f:
-    for line in f:
-        linecount += 1
-        if linecount % 1000 == 0:
-            sys.stdout.write("\rLoading Connections: %i loaded" % linecount)
-            sys.stdout.flush()
-
-        (title,links) = [col.strip() for col in line.split(';')]
-        links = links.split('|')
-        for link in links:
-            G.add_edge(int(title), int(link))
-
-        if ROWS_MAX > 0 and linecount == ROWS_MAX:
-            break
-
-end = time.time()
-print " - elapsed time: %is" % (end - start)
-
-print "\nTotal number of nodes: %i" % G.number_of_nodes()
-
-while True:
-    print "\n--- Shortest Path ---"
-    node_from = raw_input("From: ").decode(sys.stdin.encoding)
-    node_to = raw_input("To: ").decode(sys.stdin.encoding)
-    try:
-        startnode = findNodeByName(node_from)
-        endnode = findNodeByName(node_to)
-
-        if startnode == -1:
-            print node_from + " not found"
-        if endnode == -1:
-            print node_to + " not found"
-
-        if endnode == -1 or startnode == -1:
-            continue
-
-        print "Node1: %i" % startnode
-        print "Node2: %i\n" % endnode
-
-        shortest_path = find_path(G, startnode, endnode)
-
-        print " -> ".join([nodenames[elem] for elem in shortest_path])
-    except Exception as e:
-        print "Error"
-        print e
-        pass
+if __name__ == '__main__':
+    sys.exit(main())
